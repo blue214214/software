@@ -5,8 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
     build-essential cmake git pkg-config curl zip unzip tar \
-    libssl-dev uuid-dev zlib1g-dev libjsoncpp-dev \
-    libhiredis-dev libev-dev \
+    libssl-dev uuid-dev zlib1g-dev libev-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install vcpkg
@@ -17,8 +16,8 @@ RUN git clone https://github.com/microsoft/vcpkg.git && \
 ENV VCPKG_ROOT=/opt/vcpkg
 ENV PATH="$VCPKG_ROOT:$PATH"
 
-# Install C++ dependencies
-RUN vcpkg install drogon jwt-cpp amqpcpp
+# Install all dependencies via vcpkg
+RUN vcpkg install drogon hiredis amqpcpp
 
 # Copy backend source
 WORKDIR /app
@@ -34,7 +33,7 @@ RUN cmake -B build \
 FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install -y \
-    libssl3 libhiredis0.14 libev4 libjsoncpp25 uuid-runtime \
+    libssl3 libev4 uuid-runtime \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

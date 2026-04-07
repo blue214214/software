@@ -2,6 +2,7 @@
 #include <drogon/drogon.h>
 #include <trantor/utils/Logger.h>
 #include <json/json.h>
+#include <algorithm>
 #include <sstream>
 #include <map>
 
@@ -93,10 +94,11 @@ void WeeklyReportScheduler::generateReports() {
                         for (auto& [cid, cnt] : canteenCounts)
                             canteenJson[std::to_string(cid)] = cnt;
 
-                        Json::FastWriter fw;
-                        std::string topDishesStr   = fw.write(topDishes);
-                        std::string dailyStr        = fw.write(dailyJson);
-                        std::string canteenDistStr  = fw.write(canteenJson);
+                        Json::StreamWriterBuilder swb;
+                        swb["indentation"] = "";
+                        std::string topDishesStr   = Json::writeString(swb, topDishes);
+                        std::string dailyStr        = Json::writeString(swb, dailyJson);
+                        std::string canteenDistStr  = Json::writeString(swb, canteenJson);
 
                         auto db3 = drogon::app().getDbClient();
                         db3->execSqlAsync(

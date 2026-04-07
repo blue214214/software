@@ -13,39 +13,37 @@ void JwtFilter::doFilter(const drogon::HttpRequestPtr& req,
     }
 
     const std::string token = authHeader.substr(7);
-
     const auto& cfg = drogon::app().getCustomConfig();
-    const std::string secret = cfg.get("jwt_secret", "").asString();
-    const int accessExp  = cfg.get("access_token_expiry_seconds",  1800).asInt();
-    const int refreshExp = cfg.get("refresh_token_expiry_seconds", 604800).asInt();
-
-    utils::JwtUtil jwtUtil(secret, accessExp, refreshExp);
+    utils::JwtUtil jwtUtil(
+        cfg.get("jwt_secret", "").asString(),
+        cfg.get("access_token_expiry_seconds",  1800).asInt(),
+        cfg.get("refresh_token_expiry_seconds", 604800).asInt()
+    );
 
     try {
-        auto decoded = jwtUtil.parse(token);
+        auto payload = jwtUtil.parse(token);
 
-        const std::string type = decoded.get_payload_claim("type").as_string();
-        if (type != "access") {
+        if (payload.get("type", "").asString() != "access") {
             fcb(utils::ApiResponse::error(utils::ERR_TOKEN_INVALID.status,
                                           utils::ERR_TOKEN_INVALID.code,
                                           utils::ERR_TOKEN_INVALID.message));
             return;
         }
 
-        const std::string userId = decoded.get_payload_claim("userId").as_string();
-        const std::string role   = decoded.get_payload_claim("role").as_string();
-
-        req->getAttributes()->insert("userId", userId);
-        req->getAttributes()->insert("role",   role);
-
+        req->getAttributes()->insert("userId", payload["userId"].asString());
+        req->getAttributes()->insert("role",   payload.get("role", "USER").asString());
         fccb();
-    } catch (const jwt::error::token_expired_exception&) {
-        fcb(utils::ApiResponse::error(utils::ERR_TOKEN_EXPIRED.status,
-                                      utils::ERR_TOKEN_EXPIRED.code,
-                                      utils::ERR_TOKEN_EXPIRED.message));
-    } catch (const std::exception&) {
-        fcb(utils::ApiResponse::error(utils::ERR_TOKEN_INVALID.status,
-                                      utils::ERR_TOKEN_INVALID.code,
-                                      utils::ERR_TOKEN_INVALID.message));
+
+    } catch (const std::runtime_error& e) {
+        std::string msg = e.what();
+        if (msg == "token expired") {
+            fcb(utils::ApiResponse::error(utils::ERR_TOKEN_EXPIRED.status,
+                                          utils::ERR_TOKEN_EXPIRED.code,
+                                          utils::ERR_TOKEN_EXPIRED.message));
+        } else {
+            fcb(utils::ApiResponse::error(utils::ERR_TOKEN_INVALID.status,
+                                          utils::ERR_TOKEN_INVALID.code,
+                                          utils::ERR_TOKEN_INVALID.message));
+        }
     }
 }

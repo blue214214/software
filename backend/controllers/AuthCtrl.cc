@@ -39,31 +39,26 @@ void AuthCtrl::login(const drogon::HttpRequestPtr& req,
     // Check account lock via Redis
     try {
         auto redis = makeRedis();
-        std::string lockKey = "login:fail:" + studentId;
-        auto failVal = redis.get(lockKey);
+        auto failVal = redis.get("login:fail:" + studentId);
         if (failVal && std::stoi(*failVal) >= 5) {
             cb(utils::ApiResponse::error(utils::ERR_ACCOUNT_LOCKED.status,
                                          utils::ERR_ACCOUNT_LOCKED.code,
                                          utils::ERR_ACCOUNT_LOCKED.message));
             return;
         }
-    } catch (const std::exception& e) {
-        LOG_WARN << "Redis check failed during login: " << e.what();
-    }
+    } catch (...) {}
 
     auto db = drogon::app().getDbClient();
     db->execSqlAsync(
         "SELECT id, password_hash, role FROM user WHERE student_id = ? AND status = 1",
         [=, cb = std::move(cb)](const drogon::orm::Result& r) mutable {
             if (r.empty() || !utils::PasswordUtil::verify(password, r[0]["password_hash"].as<std::string>())) {
-                // Increment fail counter
                 try {
                     auto redis = makeRedis();
                     std::string lockKey = "login:fail:" + studentId;
                     long long cnt = redis.incr(lockKey);
-                    if (cnt == 1) redis.expire(lockKey, 900); // 15 min TTL on first fail
+                    if (cnt == 1) redis.expire(lockKey, 900);
                 } catch (...) {}
-
                 cb(utils::ApiResponse::error(utils::ERR_INVALID_CRED.status,
                                              utils::ERR_INVALID_CRED.code,
                                              utils::ERR_INVALID_CRED.message));
@@ -73,19 +68,12 @@ void AuthCtrl::login(const drogon::HttpRequestPtr& req,
             long long userId = r[0]["id"].as<long long>();
             std::string role = r[0]["role"].as<std::string>();
 
-            // Clear fail counter on success
-            try {
-                auto redis = makeRedis();
-                redis.del("login:fail:" + studentId);
-            } catch (...) {}
+            try { makeRedis().del("login:fail:" + studentId); } catch (...) {}
 
             auto jwt = makeJwt();
-            std::string accessToken  = jwt.generateAccessToken(userId, studentId, role);
-            std::string refreshToken = jwt.generateRefreshToken(userId, studentId);
-
             Json::Value data;
-            data["accessToken"]  = accessToken;
-            data["refreshToken"] = refreshToken;
+            data["accessToken"]  = jwt.generateAccessToken(userId, studentId, role);
+            data["refreshToken"] = jwt.generateRefreshToken(userId, studentId);
             data["tokenType"]    = "Bearer";
             cb(utils::ApiResponse::ok(data));
         },
@@ -111,35 +99,28 @@ void AuthCtrl::refresh(const drogon::HttpRequestPtr& req,
     const std::string refreshToken = (*body)["refreshToken"].asString();
     auto jwt = makeJwt();
 
-    std::string jti, studentId;
-    long long userId = 0;
-    long long remainingSec = 0;
-
+    Json::Value payload;
     try {
-        auto decoded = jwt.parse(refreshToken);
-        if (decoded.get_payload_claim("type").as_string() != "refresh") {
-            cb(utils::ApiResponse::error(utils::ERR_TOKEN_INVALID.status,
-                                         utils::ERR_TOKEN_INVALID.code,
-                                         utils::ERR_TOKEN_INVALID.message));
-            return;
-        }
-        jti          = decoded.get_id();
-        studentId    = decoded.get_subject();
-        userId       = std::stoll(decoded.get_payload_claim("userId").as_string());
-        remainingSec = jwt.getRemainingSeconds(refreshToken);
-    } catch (const jwt::error::token_expired_exception&) {
-        cb(utils::ApiResponse::error(utils::ERR_TOKEN_EXPIRED.status,
-                                     utils::ERR_TOKEN_EXPIRED.code,
-                                     utils::ERR_TOKEN_EXPIRED.message));
+        payload = jwt.parse(refreshToken);
+    } catch (const std::runtime_error& e) {
+        std::string msg = e.what();
+        auto& err = (msg == "token expired") ? utils::ERR_TOKEN_EXPIRED : utils::ERR_TOKEN_INVALID;
+        cb(utils::ApiResponse::error(err.status, err.code, err.message));
         return;
-    } catch (const std::exception&) {
+    }
+
+    if (payload.get("type", "").asString() != "refresh") {
         cb(utils::ApiResponse::error(utils::ERR_TOKEN_INVALID.status,
                                      utils::ERR_TOKEN_INVALID.code,
                                      utils::ERR_TOKEN_INVALID.message));
         return;
     }
 
-    // Check blacklist
+    std::string jti      = payload["jti"].asString();
+    std::string studentId = payload["sub"].asString();
+    long long userId     = std::stoll(payload["userId"].asString());
+    long long remaining  = jwt.getRemainingSeconds(refreshToken);
+
     try {
         auto redis = makeRedis();
         if (redis.exists("auth:blacklist:" + jti)) {
@@ -148,9 +129,7 @@ void AuthCtrl::refresh(const drogon::HttpRequestPtr& req,
                                          utils::ERR_REFRESH_USED.message));
             return;
         }
-        // Blacklist old token
-        if (remainingSec > 0)
-            redis.setex("auth:blacklist:" + jti, "1", (int)remainingSec);
+        if (remaining > 0) redis.setex("auth:blacklist:" + jti, "1", (int)remaining);
     } catch (const std::exception& e) {
         LOG_ERROR << "Redis error during refresh: " << e.what();
         cb(utils::ApiResponse::error(utils::ERR_INTERNAL.status,
@@ -159,7 +138,6 @@ void AuthCtrl::refresh(const drogon::HttpRequestPtr& req,
         return;
     }
 
-    // Fetch role from DB
     auto db = drogon::app().getDbClient();
     db->execSqlAsync(
         "SELECT role FROM user WHERE id = ? AND status = 1",
@@ -170,14 +148,10 @@ void AuthCtrl::refresh(const drogon::HttpRequestPtr& req,
                                              utils::ERR_TOKEN_INVALID.message));
                 return;
             }
-            std::string role = r[0]["role"].as<std::string>();
             auto jwt2 = makeJwt();
-            std::string newAccess  = jwt2.generateAccessToken(userId, studentId, role);
-            std::string newRefresh = jwt2.generateRefreshToken(userId, studentId);
-
             Json::Value data;
-            data["accessToken"]  = newAccess;
-            data["refreshToken"] = newRefresh;
+            data["accessToken"]  = jwt2.generateAccessToken(userId, studentId, r[0]["role"].as<std::string>());
+            data["refreshToken"] = jwt2.generateRefreshToken(userId, studentId);
             data["tokenType"]    = "Bearer";
             cb(utils::ApiResponse::ok(data));
         },
@@ -204,17 +178,12 @@ void AuthCtrl::logout(const drogon::HttpRequestPtr& req,
     auto jwt = makeJwt();
 
     try {
-        auto decoded = jwt.parse(refreshToken);
-        std::string jti = decoded.get_id();
+        auto payload = jwt.parseUnverified(refreshToken);
+        std::string jti = payload["jti"].asString();
         long long remaining = jwt.getRemainingSeconds(refreshToken);
-
         auto redis = makeRedis();
-        if (remaining > 0)
-            redis.setex("auth:blacklist:" + jti, "1", (int)remaining);
-    } catch (const std::exception& e) {
-        // Token already expired or invalid — treat as already logged out
-        LOG_WARN << "logout with invalid/expired token: " << e.what();
-    }
+        if (remaining > 0) redis.setex("auth:blacklist:" + jti, "1", (int)remaining);
+    } catch (...) {}
 
     cb(utils::ApiResponse::ok());
 }
