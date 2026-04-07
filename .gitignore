@@ -1,0 +1,66 @@
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Flutter / Dart
+mobile_app/.dart_tool/
+mobile_app/.flutter-plugins
+mobile_app/.flutter-plugins-dependencies
+mobile_app/build/
+mobile_app/.packages
+mobile_app/pubspec.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+state_generator/.venv/
+state_generator/venv/
+state_generator/*.egg-info/
+state_generator/dist/
+state_generator/.pytest_cache/
+*.pyc
+
+# Node / Electron (if any)
+node_modules/
+dist/
+.env
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# C++ build
+backend/build/
+backend/CMakeCache.txt
+backend/CMakeFiles/
+*.o
+*.a
+
+# vcpkg (huge, not needed in repo)
+vcpkg/buildtrees/
+vcpkg/downloads/
+vcpkg/installed/
+vcpkg/packages/
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+application-local.yml

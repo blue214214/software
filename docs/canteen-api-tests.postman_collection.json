@@ -1,0 +1,539 @@
+{
+  "info": {
+    "name": "BJTU Canteen Backend API Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "access_token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "reservation_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. 认证模块",
+      "item": [
+        {
+          "name": "1.1 登录（正确账号）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('登录成功，返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('返回 accessToken 和 refreshToken', function() {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.accessToken).to.be.a('string').and.not.empty;",
+                  "  pm.expect(json.data.refreshToken).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('access_token', json.data.accessToken);",
+                  "  pm.collectionVariables.set('refresh_token', json.data.refreshToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"studentId\": \"demo001\", \"password\": \"password123\"}"
+            }
+          }
+        },
+        {
+          "name": "1.2 登录（错误密码）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('错误密码返回401', function() {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('错误码为 INVALID_CREDENTIALS', function() {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json.code).to.equal('INVALID_CREDENTIALS');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"studentId\": \"demo001\", \"password\": \"wrongpassword\"}"
+            }
+          }
+        },
+        {
+          "name": "1.3 刷新令牌",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('刷新成功返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('返回新的 accessToken', function() {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json.data.accessToken).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('access_token', json.data.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/auth/refresh",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"refreshToken\": \"{{refresh_token}}\"}"
+            }
+          }
+        },
+        {
+          "name": "1.4 无 Token 访问受保护接口",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('无Token返回401', function() {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/canteens"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. 排队与食堂",
+      "item": [
+        {
+          "name": "2.1 获取所有食堂列表",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('返回食堂数组', function() {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data).to.be.an('array');",
+                  "});",
+                  "pm.test('每个食堂包含 crowdLevel 字段', function() {",
+                  "  var json = pm.response.json();",
+                  "  if (json.data.length > 0) {",
+                  "    pm.expect(['GREEN','YELLOW','RED']).to.include(json.data[0].crowdLevel);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/canteens",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "2.2 获取食堂排队详情",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('返回窗口排队数组', function() {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/canteens/1/queues",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. 座位",
+      "item": [
+        {
+          "name": "3.1 获取食堂座位状态",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('包含三态座位数量', function() {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json.data).to.have.property('availableSeats');",
+                  "  pm.expect(json.data).to.have.property('reservedSeats');",
+                  "  pm.expect(json.data).to.have.property('occupiedSeats');",
+                  "});",
+                  "pm.test('座位容量不变量：available+reserved+occupied=total', function() {",
+                  "  var d = pm.response.json().data;",
+                  "  pm.expect(d.availableSeats + d.reservedSeats + d.occupiedSeats).to.equal(d.totalSeats);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/canteens/1/seats",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. 菜品搜索",
+      "item": [
+        {
+          "name": "4.1 搜索菜品（正常关键词）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('返回菜品数组', function() {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/dishes/search?q=鸡",
+              "query": [{ "key": "q", "value": "鸡" }]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "4.2 搜索关键词超过50字符",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('超长关键词返回400', function() {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('错误码为 KEYWORD_TOO_LONG', function() {",
+                  "  pm.expect(pm.response.json().code).to.equal('KEYWORD_TOO_LONG');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/dishes/search?q=这是一个超过五十个字符的搜索关键词用来测试长度限制是否正确实现了没有",
+              "query": [{ "key": "q", "value": "这是一个超过五十个字符的搜索关键词用来测试长度限制是否正确实现了没有" }]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. 菜品预订",
+      "item": [
+        {
+          "name": "5.1 创建预订",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('预订成功返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('返回 reservationNo 和 seatId', function() {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.reservationNo).to.be.a('string').and.not.empty;",
+                  "  pm.expect(json.data.seatId).to.be.a('number');",
+                  "  pm.collectionVariables.set('reservation_id', json.data.reservationNo);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/reservations",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dishId\": 1}"
+            }
+          }
+        },
+        {
+          "name": "5.2 查询我的预订列表",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('返回预订数组', function() {",
+                  "  pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});",
+                  "pm.test('保存第一条预订ID', function() {",
+                  "  var list = pm.response.json().data;",
+                  "  if (list.length > 0) {",
+                  "    pm.collectionVariables.set('reservation_id', list[0].id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/reservations/my",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "5.3 确认取餐",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('取餐确认返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/reservations/{{reservation_id}}/pickup",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "5.4 确认离开",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('离开确认返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/reservations/{{reservation_id}}/leave",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "5.5 取消预订（重新预订后取消）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('取消返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/v1/reservations/{{reservation_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. 推荐",
+      "item": [
+        {
+          "name": "6.1 获取个性化推荐",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('推荐列表不超过10条', function() {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json.data).to.be.an('array');",
+                  "  pm.expect(json.data.length).to.be.at.most(10);",
+                  "});",
+                  "pm.test('推荐菜品包含必要字段', function() {",
+                  "  var list = pm.response.json().data;",
+                  "  if (list.length > 0) {",
+                  "    pm.expect(list[0]).to.have.property('name');",
+                  "    pm.expect(list[0]).to.have.property('price');",
+                  "    pm.expect(list[0]).to.have.property('canteenName');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/recommendations",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. 周报",
+      "item": [
+        {
+          "name": "7.1 获取历史周报列表",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('返回周报数组', function() {",
+                  "  pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});",
+                  "pm.test('保存第一条周报ID', function() {",
+                  "  var list = pm.response.json().data;",
+                  "  if (list.length > 0) {",
+                  "    pm.collectionVariables.set('report_id', list[0].id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/reports/weekly",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "7.2 获取周报详情",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('周报包含图表数据字段', function() {",
+                  "  var d = pm.response.json().data;",
+                  "  pm.expect(d).to.have.property('mealCount');",
+                  "  pm.expect(d).to.have.property('totalAmount');",
+                  "  pm.expect(d).to.have.property('dailyMealCounts');",
+                  "  pm.expect(d).to.have.property('canteenDistribution');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/reports/weekly/{{report_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. 限流测试",
+      "item": [
+        {
+          "name": "8.1 登出（正常）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('登出返回200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/auth/logout",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"refreshToken\": \"{{refresh_token}}\"}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

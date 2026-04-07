@@ -1,0 +1,66 @@
+{
+  "vhosts": [{"name": "/"}],
+  "exchanges": [
+    {
+      "name": "canteen.queue",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "canteen.seat",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "canteen.dlx",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false
+    }
+  ],
+  "queues": [
+    {
+      "name": "queue.record",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "canteen.dlx",
+        "x-dead-letter-routing-key": "dlq.queue"
+      }
+    },
+    {
+      "name": "seat.record",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "canteen.dlx",
+        "x-dead-letter-routing-key": "dlq.seat"
+      }
+    },
+    {
+      "name": "dlq.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    },
+    {
+      "name": "dlq.seat",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false
+    }
+  ],
+  "bindings": [
+    {"source": "canteen.queue", "vhost": "/", "destination": "queue.record", "destination_type": "queue", "routing_key": "queue.record"},
+    {"source": "canteen.seat",  "vhost": "/", "destination": "seat.record",  "destination_type": "queue", "routing_key": "seat.record"},
+    {"source": "canteen.dlx",   "vhost": "/", "destination": "dlq.queue",    "destination_type": "queue", "routing_key": "dlq.queue"},
+    {"source": "canteen.dlx",   "vhost": "/", "destination": "dlq.seat",     "destination_type": "queue", "routing_key": "dlq.seat"}
+  ]
+}
