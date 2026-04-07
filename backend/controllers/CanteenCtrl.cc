@@ -2,19 +2,11 @@
 #include "utils/ApiResponse.h"
 #include "utils/ErrorCode.h"
 #include "utils/CrowdLevel.h"
-#include "utils/RedisClient.h"
+#include "utils/RedisUtil.h"
 #include <drogon/drogon.h>
 #include <json/json.h>
 #include <chrono>
 #include <ctime>
-
-static utils::RedisClient makeRedis() {
-    const auto& cfg = drogon::app().getCustomConfig();
-    return utils::RedisClient(
-        cfg.get("redis_host", "127.0.0.1").asString(),
-        cfg.get("redis_port", 6379).asInt()
-    );
-}
 
 // ── GET /api/v1/canteens ──────────────────────────────────────────────────────
 void CanteenCtrl::getAllCanteens(const drogon::HttpRequestPtr& req,

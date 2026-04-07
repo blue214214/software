@@ -1,5 +1,5 @@
 #include "MqConsumer.h"
-#include "utils/RedisClient.h"
+#include "utils/RedisUtil.h"
 #include <drogon/drogon.h>
 #include <json/json.h>
 #include <trantor/utils/Logger.h>
@@ -102,10 +102,7 @@ void MqConsumer::processQueueRecord(const std::string& body) {
     // Update Redis cache
     const auto& cfg = drogon::app().getCustomConfig();
     try {
-        utils::RedisClient redis(
-            cfg.get("redis_host", "127.0.0.1").asString(),
-            cfg.get("redis_port", 6379).asInt()
-        );
+        utils::RedisClient redis = utils::makeRedis();
         std::string key = "queue:canteen:" + std::to_string(canteenId);
         redis.hset(key, std::to_string(windowId), body);
         redis.expire(key, 60);
@@ -132,10 +129,7 @@ void MqConsumer::processSeatRecord(const std::string& body) {
     // Update Redis seat cache
     const auto& cfg = drogon::app().getCustomConfig();
     try {
-        utils::RedisClient redis(
-            cfg.get("redis_host", "127.0.0.1").asString(),
-            cfg.get("redis_port", 6379).asInt()
-        );
+        utils::RedisClient redis = utils::makeRedis();
         std::string key = "seat:canteen:" + std::to_string(canteenId);
         redis.setex(key, body, 120);
     } catch (const std::exception& e) {

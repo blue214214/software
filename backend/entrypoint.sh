@@ -41,6 +41,8 @@ cat > /app/config.json <<EOF
     "refresh_token_expiry_seconds": 604800,
     "redis_host": "${REDIS_HOST:-127.0.0.1}",
     "redis_port": ${REDIS_PORT:-6379},
+    "redis_password": "${REDIS_PASSWORD:-}",
+    "redis_tls": ${REDIS_TLS:-false},
     "rabbitmq_host": "${RABBITMQ_HOST:-127.0.0.1}",
     "rabbitmq_port": ${RABBITMQ_PORT:-5672},
     "rabbitmq_user": "${RABBITMQ_USER:-canteen}",

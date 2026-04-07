@@ -1,4 +1,5 @@
 #include "RateLimitFilter.h"
+#include "utils/RedisUtil.h"
 #include <drogon/drogon.h>
 
 void RateLimitFilter::doFilter(const drogon::HttpRequestPtr& req,
@@ -8,11 +9,7 @@ void RateLimitFilter::doFilter(const drogon::HttpRequestPtr& req,
     const std::string key = "ratelimit:ip:" + ip;
 
     try {
-        const auto& cfg = drogon::app().getCustomConfig();
-        utils::RedisClient redis(
-            cfg.get("redis_host", "127.0.0.1").asString(),
-            cfg.get("redis_port", 6379).asInt()
-        );
+        utils::RedisClient redis = utils::makeRedis();
 
         long long count = redis.incr(key);
         if (count == 1) redis.expire(key, 60); // 60s window

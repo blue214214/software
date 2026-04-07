@@ -3,7 +3,7 @@
 #include "utils/ErrorCode.h"
 #include "utils/JwtUtil.h"
 #include "utils/PasswordUtil.h"
-#include "utils/RedisClient.h"
+#include "utils/RedisUtil.h"
 #include <drogon/drogon.h>
 #include <json/json.h>
 
@@ -13,14 +13,6 @@ static utils::JwtUtil makeJwt() {
         cfg.get("jwt_secret", "secret").asString(),
         cfg.get("access_token_expiry_seconds",  1800).asInt(),
         cfg.get("refresh_token_expiry_seconds", 604800).asInt()
-    );
-}
-
-static utils::RedisClient makeRedis() {
-    const auto& cfg = drogon::app().getCustomConfig();
-    return utils::RedisClient(
-        cfg.get("redis_host", "127.0.0.1").asString(),
-        cfg.get("redis_port", 6379).asInt()
     );
 }
 

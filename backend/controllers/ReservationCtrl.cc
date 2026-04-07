@@ -1,17 +1,9 @@
 #include "ReservationCtrl.h"
 #include "utils/ApiResponse.h"
 #include "utils/ErrorCode.h"
-#include "utils/RedisClient.h"
+#include "utils/RedisUtil.h"
 #include <drogon/drogon.h>
 #include <json/json.h>
-
-static utils::RedisClient makeRedis() {
-    const auto& cfg = drogon::app().getCustomConfig();
-    return utils::RedisClient(
-        cfg.get("redis_host", "127.0.0.1").asString(),
-        cfg.get("redis_port", 6379).asInt()
-    );
-}
 
 // ── POST /api/v1/reservations ─────────────────────────────────────────────────
 void ReservationCtrl::create(const drogon::HttpRequestPtr& req,

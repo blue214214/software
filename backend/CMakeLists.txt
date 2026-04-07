@@ -27,6 +27,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     OpenSSL::SSL
     OpenSSL::Crypto
     hiredis::hiredis
+    hiredis::hiredis_ssl
     amqpcpp
     ev
 )
