@@ -2,7 +2,9 @@
 #include <string>
 #include <chrono>
 #include <stdexcept>
+#define JWT_DISABLE_PICOJSON
 #include <jwt-cpp/jwt.h>
+#include <jwt-cpp/traits/open-ssl/traits.h>
 
 namespace utils {
 
@@ -46,34 +48,34 @@ public:
     }
 
     // Parse and verify token; throws std::runtime_error on failure
-    jwt::decoded_jwt<jwt::traits::kazuho_picojson> parse(const std::string& token) const {
-        auto verifier = jwt::verify()
+    jwt::decoded_jwt<jwt::traits::open_ssl> parse(const std::string& token) const {
+        auto verifier = jwt::verify<jwt::traits::open_ssl>()
             .allow_algorithm(jwt::algorithm::hs256{secret_})
             .with_issuer("bjtu-canteen");
-        auto decoded = jwt::decode(token);
+        auto decoded = jwt::decode<jwt::traits::open_ssl>(token);
         verifier.verify(decoded);
         return decoded;
     }
 
     std::string getJti(const std::string& token) const {
-        return jwt::decode(token).get_id();
+        return jwt::decode<jwt::traits::open_ssl>(token).get_id();
     }
 
     std::string getType(const std::string& token) const {
-        return jwt::decode(token).get_payload_claim("type").as_string();
+        return jwt::decode<jwt::traits::open_ssl>(token).get_payload_claim("type").as_string();
     }
 
     long long getUserId(const std::string& token) const {
-        return std::stoll(jwt::decode(token).get_payload_claim("userId").as_string());
+        return std::stoll(jwt::decode<jwt::traits::open_ssl>(token).get_payload_claim("userId").as_string());
     }
 
     std::string getRole(const std::string& token) const {
-        return jwt::decode(token).get_payload_claim("role").as_string();
+        return jwt::decode<jwt::traits::open_ssl>(token).get_payload_claim("role").as_string();
     }
 
     // Remaining TTL in seconds (may be negative if expired)
     long long getRemainingSeconds(const std::string& token) const {
-        auto decoded = jwt::decode(token);
+        auto decoded = jwt::decode<jwt::traits::open_ssl>(token);
         auto exp = decoded.get_expires_at();
         auto now = std::chrono::system_clock::now();
         return std::chrono::duration_cast<std::chrono::seconds>(exp - now).count();

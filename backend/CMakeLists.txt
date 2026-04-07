@@ -34,6 +34,11 @@ file(GLOB_RECURSE SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    JWT_DISABLE_PICOJSON
+    JWT_OPENSSL_ENABLED
+)
+
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${JWT_CPP_INCLUDE_DIRS}

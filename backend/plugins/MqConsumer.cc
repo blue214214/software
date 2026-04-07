@@ -1,4 +1,5 @@
 #include "MqConsumer.h"
+#include "utils/RedisClient.h"
 #include <drogon/drogon.h>
 #include <json/json.h>
 #include <trantor/utils/Logger.h>

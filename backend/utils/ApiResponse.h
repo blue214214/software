@@ -3,6 +3,8 @@
 #include <json/json.h>
 #include <string>
 #include <vector>
+#include <chrono>
+#include <ctime>
 
 namespace utils {
 
@@ -13,7 +15,7 @@ public:
         Json::Value body;
         body["success"] = true;
         if (!data.isNull()) body["data"] = data;
-        body["timestamp"] = drogon::utils::getFormattedDate();
+        body["timestamp"] = currentTimestamp();
         auto resp = drogon::HttpResponse::newHttpJsonResponse(body);
         resp->setStatusCode(drogon::k200OK);
         return resp;
@@ -26,7 +28,7 @@ public:
         body["success"] = false;
         body["code"] = code;
         body["message"] = message;
-        body["timestamp"] = drogon::utils::getFormattedDate();
+        body["timestamp"] = currentTimestamp();
         auto resp = drogon::HttpResponse::newHttpJsonResponse(body);
         resp->setStatusCode(status);
         return resp;
@@ -46,10 +48,19 @@ public:
             details.append(fe);
         }
         body["details"] = details;
-        body["timestamp"] = drogon::utils::getFormattedDate();
+        body["timestamp"] = currentTimestamp();
         auto resp = drogon::HttpResponse::newHttpJsonResponse(body);
         resp->setStatusCode(drogon::k400BadRequest);
         return resp;
+    }
+
+private:
+    static std::string currentTimestamp() {
+        auto now = std::chrono::system_clock::now();
+        std::time_t t = std::chrono::system_clock::to_time_t(now);
+        char buf[32];
+        std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&t));
+        return std::string(buf);
     }
 };
 
