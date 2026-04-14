@@ -9,12 +9,19 @@ find_package(OpenSSL REQUIRED)
 find_package(hiredis CONFIG REQUIRED)
 find_package(amqpcpp CONFIG REQUIRED)
 
-# Check if hiredis_ssl target exists
+# hiredis_ssl: try vcpkg target first, fall back to system lib
 if(TARGET hiredis::hiredis_ssl)
-    set(HIREDIS_SSL_TARGET hiredis::hiredis_ssl)
+    set(HIREDIS_SSL_LIB hiredis::hiredis_ssl)
+elseif(TARGET hiredis_ssl)
+    set(HIREDIS_SSL_LIB hiredis_ssl)
 else()
-    find_library(HIREDIS_SSL_LIB hiredis_ssl)
-    set(HIREDIS_SSL_TARGET ${HIREDIS_SSL_LIB})
+    find_library(HIREDIS_SSL_LIB_PATH hiredis_ssl)
+    if(HIREDIS_SSL_LIB_PATH)
+        set(HIREDIS_SSL_LIB ${HIREDIS_SSL_LIB_PATH})
+    else()
+        message(WARNING "hiredis_ssl not found, TLS disabled")
+        set(HIREDIS_SSL_LIB "")
+    endif()
 endif()
 
 file(GLOB_RECURSE SOURCES
@@ -35,7 +42,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     OpenSSL::SSL
     OpenSSL::Crypto
     hiredis::hiredis
-    ${HIREDIS_SSL_TARGET}
+    ${HIREDIS_SSL_LIB}
     amqpcpp
     ev
 )
