@@ -9,6 +9,14 @@ find_package(OpenSSL REQUIRED)
 find_package(hiredis CONFIG REQUIRED)
 find_package(amqpcpp CONFIG REQUIRED)
 
+# Check if hiredis_ssl target exists
+if(TARGET hiredis::hiredis_ssl)
+    set(HIREDIS_SSL_TARGET hiredis::hiredis_ssl)
+else()
+    find_library(HIREDIS_SSL_LIB hiredis_ssl)
+    set(HIREDIS_SSL_TARGET ${HIREDIS_SSL_LIB})
+endif()
+
 file(GLOB_RECURSE SOURCES
     "main.cc"
     "controllers/*.cc"
@@ -27,7 +35,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     OpenSSL::SSL
     OpenSSL::Crypto
     hiredis::hiredis
-    hiredis::hiredis_ssl
+    ${HIREDIS_SSL_TARGET}
     amqpcpp
     ev
 )

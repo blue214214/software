@@ -17,7 +17,7 @@ ENV VCPKG_ROOT=/opt/vcpkg
 ENV PATH="$VCPKG_ROOT:$PATH"
 
 # Install all dependencies via vcpkg
-RUN vcpkg install drogon hiredis amqpcpp
+RUN vcpkg install drogon hiredis[ssl] amqpcpp
 
 # Copy backend source
 WORKDIR /app
